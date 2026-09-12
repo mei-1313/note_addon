@@ -11,6 +11,16 @@
 
 ### 特徴
 - **全件自動展開**: 「もっとみる」ボタンを自動で繰り返しクリックし、ページ上のデータを全て表示させてからCSVを作成します（最大100回クリックの安全上限を設定）。
+- **最新レイアウト完全対応**: noteの最新テーブルデザイン（Tailwind CSS化）に対応。タイトルセルを構造化解析し、以下の9カラム構成でスマートに出力します：
+  - タイトル
+  - URL（記事リンク）
+  - ステータス（公開中、下書き 等）
+  - 公開日
+  - インプレッション
+  - ページビュー
+  - スキ
+  - コメント
+  - 売上
 - **文字化け対策**: Excelなどで開いても文字化けしにくい「BOM付きUTF-8」で出力します。
 - **自動タイムスタンプ**: `note_stats_YYYYMMDDHHMM.csv` の形式で、ダウンロードした日時のタイムスタンプをファイル名に自動付与します。
 - **安全設計**: ダウンロード処理中にユーザーが別のページに移動した場合、処理を自動で中断します。
@@ -45,6 +55,16 @@
 
 ### Features
 - **Auto-expand Data**: Repeatedly clicks the "Show More" button automatically to reveal all historical statistics before generating the CSV (safeguard limit set to a maximum of 100 clicks).
+- **Fully Compatible with Latest Layout**: Supports note's updated modern layout (Tailwind CSS). Parses the title cell into structured fields, outputting a 9-column CSV:
+  - Title
+  - URL (Article Link)
+  - Status (e.g. Published / 公開中)
+  - Published Date
+  - Impressions
+  - Page Views
+  - Likes (スキ)
+  - Comments
+  - Sales
 - **No Character Encoding Issues**: Exports the CSV in UTF-8 format with BOM (Byte Order Mark) to ensure it opens correctly in software like Microsoft Excel without garbled text.
 - **Timestamped Filenames**: Saved files are named automatically using the format `note_stats_YYYYMMDDHHMM.csv` based on the download date and time.
 - **Safety Measures**: Automatically stops loading data if the user navigates away from the page during the process.
