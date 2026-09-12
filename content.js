@@ -38,13 +38,29 @@
     }
 
     function injectButton() {
-        if (!isStatsPage()) return;
-
-        // 既にボタンが存在する場合は何もしない
-        if (document.getElementById(BUTTON_ID)) return;
-
         const table = findStatsTable();
-        if (!table) return;
+        const existingContainer = document.getElementById(CONTAINER_ID);
+
+        if (!table) {
+            // テーブルがない画面ではボタンを削除
+            if (existingContainer) {
+                existingContainer.remove();
+            }
+            return;
+        }
+
+        const targetWrapper = table.closest('.overflow-x-auto') || table;
+        if (!targetWrapper || !targetWrapper.parentNode) return;
+
+        // 既にテーブルの直前にコンテナが存在している場合は何もしない
+        if (existingContainer && targetWrapper.previousElementSibling === existingContainer) {
+            return;
+        }
+
+        // 古いコンテナがあれば除去して再配置
+        if (existingContainer) {
+            existingContainer.remove();
+        }
 
         console.log('[note Stats CSV] 統計テーブルを検出しました。ボタンを生成します。', table);
 
@@ -89,15 +105,8 @@
         });
 
         container.appendChild(button);
-
-        // 横スクロールラッパー (overflow-x-auto) があればその手前に、なければテーブルの手前に挿入
-        const targetWrapper = table.closest('.overflow-x-auto') || table;
-        if (targetWrapper && targetWrapper.parentNode) {
-            targetWrapper.parentNode.insertBefore(container, targetWrapper);
-            console.log('[note Stats CSV] ボタンを挿入しました。', container);
-        } else {
-            console.warn('[note Stats CSV] 挿入先親要素が見つかりません。');
-        }
+        targetWrapper.parentNode.insertBefore(container, targetWrapper);
+        console.log('[note Stats CSV] ボタンを挿入しました。', container);
     }
 
     async function handleDownloadClick(button) {
