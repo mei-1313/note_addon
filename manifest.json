@@ -1,22 +1,23 @@
 {
   "manifest_version": 3,
   "name": "note 統計CSVダウンロード",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "noteの統計ページからデータをCSVとしてダウンロードします。",
   "permissions": [
     "activeTab"
   ],
   "host_permissions": [
-    "https://note.com/sitesettings/stats*"
+    "https://note.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://note.com/sitesettings/stats*"
+        "https://note.com/*"
       ],
       "js": [
         "content.js"
-      ]
+      ],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

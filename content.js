@@ -2,40 +2,81 @@
     'use strict';
 
     const BUTTON_ID = 'note-stats-csv-download-button';
+    const CONTAINER_ID = 'note-stats-csv-container';
     const SHOW_MORE_TEXT = 'もっとみる';
-    const MAX_LOAD_ATTEMPTS = 100; // 安全のための上限回数
-    const INITIAL_URL = window.location.href;
+    const MAX_LOAD_ATTEMPTS = 100;
+
+    console.log('[note Stats CSV] 拡張機能が読み込まれました。URL:', window.location.href);
+
+    function isStatsPage() {
+        const href = window.location.href;
+        return href.includes('/stats') ||
+               href.includes('/sitesettings') ||
+               href.includes('/analytics') ||
+               href.includes('/dashboard') ||
+               !!findStatsTable();
+    }
 
     function findStatsTable() {
-        return document.querySelector('table[aria-label="記事一覧"]') ||
-               document.querySelector('.o-statsContent__table') ||
-               document.querySelector('table');
+        // 1. aria-label="記事一覧" を持つテーブル
+        let table = document.querySelector('table[aria-label="記事一覧"]');
+        if (table) return table;
+
+        // 2. ページ内のすべてのテーブルから統計ヘッダーを持つテーブルを検出
+        const tables = Array.from(document.querySelectorAll('table'));
+        for (const t of tables) {
+            const text = t.textContent || '';
+            if (text.includes('タイトル') && (text.includes('ページビュー') || text.includes('インプレッション') || text.includes('スキ'))) {
+                return t;
+            }
+            if (t.classList.contains('o-statsContent__table')) {
+                return t;
+            }
+        }
+
+        return null;
     }
 
     function injectButton() {
+        if (!isStatsPage()) return;
+
+        // 既にボタンが存在する場合は何もしない
         if (document.getElementById(BUTTON_ID)) return;
 
         const table = findStatsTable();
         if (!table) return;
 
+        console.log('[note Stats CSV] 統計テーブルを検出しました。ボタンを生成します。', table);
+
+        const container = document.createElement('div');
+        container.id = CONTAINER_ID;
+        container.style.display = 'block';
+        container.style.width = '100%';
+        container.style.margin = '16px 0';
+        container.style.clear = 'both';
+
         const button = document.createElement('button');
         button.id = BUTTON_ID;
+        button.type = 'button';
         button.innerText = 'CSV形式でダウンロード（全件表示）';
-        button.style.marginBottom = '12px';
-        button.style.padding = '10px 18px';
+        button.style.display = 'inline-flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.padding = '10px 20px';
         button.style.backgroundColor = '#2cb696';
-        button.style.color = '#fff';
+        button.style.color = '#ffffff';
         button.style.border = 'none';
         button.style.borderRadius = '6px';
         button.style.cursor = 'pointer';
         button.style.fontWeight = 'bold';
         button.style.fontSize = '14px';
+        button.style.lineHeight = '1.5';
         button.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-        button.style.transition = 'background-color 0.2s ease';
+        button.style.transition = 'all 0.2s ease';
         button.style.zIndex = '9999';
 
         button.addEventListener('mouseenter', () => {
-            if (!button.disabled) button.style.backgroundColor = '#259b80';
+            if (!button.disabled) button.style.backgroundColor = '#23957a';
         });
         button.addEventListener('mouseleave', () => {
             if (!button.disabled) button.style.backgroundColor = '#2cb696';
@@ -47,9 +88,16 @@
             await handleDownloadClick(button);
         });
 
-        // 横スクロール用コンテナ（overflow-x-auto）があればその外側（上部）に配置
-        const targetContainer = table.closest('.overflow-x-auto') || table;
-        targetContainer.parentNode.insertBefore(button, targetContainer);
+        container.appendChild(button);
+
+        // 横スクロールラッパー (overflow-x-auto) があればその手前に、なければテーブルの手前に挿入
+        const targetWrapper = table.closest('.overflow-x-auto') || table;
+        if (targetWrapper && targetWrapper.parentNode) {
+            targetWrapper.parentNode.insertBefore(container, targetWrapper);
+            console.log('[note Stats CSV] ボタンを挿入しました。', container);
+        } else {
+            console.warn('[note Stats CSV] 挿入先親要素が見つかりません。');
+        }
     }
 
     async function handleDownloadClick(button) {
@@ -59,10 +107,11 @@
         const originalText = button.innerText;
         button.innerText = 'データ展開中...';
 
+        const startUrl = window.location.href;
+
         try {
-            await loadAllData();
-            // データロード後にURLが変わっていないか最終確認
-            if (window.location.href === INITIAL_URL) {
+            await loadAllData(startUrl);
+            if (window.location.href === startUrl) {
                 const table = findStatsTable();
                 if (table) {
                     downloadCSV(table);
@@ -73,7 +122,7 @@
                 alert('ページが移動したため、ダウンロードを中止しました。');
             }
         } catch (error) {
-            console.error('Download failed:', error);
+            console.error('[note Stats CSV] Download failed:', error);
             alert('データの読み込み中にエラーが発生しました。');
         } finally {
             button.disabled = false;
@@ -100,29 +149,29 @@
         });
     }
 
-    async function loadAllData() {
+    async function loadAllData(startUrl) {
         let attempts = 0;
         while (attempts < MAX_LOAD_ATTEMPTS) {
-            // URLが変わっていたら即座に中断（安全装置）
-            if (window.location.href !== INITIAL_URL) {
-                console.warn('URL changed, stopping data load.');
+            if (window.location.href !== startUrl) {
+                console.warn('[note Stats CSV] URL changed, stopping data load.');
                 return;
             }
 
             const showMoreButton = findShowMoreButton();
             if (!showMoreButton) {
+                console.log('[note Stats CSV] 「もっとみる」ボタンが見つかりません。全件展開完了とみなします。');
                 break;
             }
 
+            console.log(`[note Stats CSV] 「もっとみる」をクリックします (${attempts + 1}/${MAX_LOAD_ATTEMPTS})`);
             showMoreButton.click();
             attempts++;
             
-            // データの読み込みとDOMの更新を待つ
             await new Promise(resolve => setTimeout(resolve, 1200));
         }
         
         if (attempts >= MAX_LOAD_ATTEMPTS) {
-            console.warn('Reached maximum load attempts.');
+            console.warn('[note Stats CSV] Reached maximum load attempts.');
         }
     }
 
@@ -137,7 +186,6 @@
         if (ths.length > 0) {
             const headerNames = ths.map(th => th.innerText.trim().replace(/\n/g, ' '));
             if (headerNames[0] && headerNames[0].includes('タイトル')) {
-                // タイトル列を「タイトル, URL, ステータス, 公開日」に分割・展開
                 headers = ['タイトル', 'URL', 'ステータス', '公開日', ...headerNames.slice(1)];
             } else {
                 headers = headerNames;
@@ -165,7 +213,7 @@
                 const url = link.href || link.getAttribute('href') || '';
                 const fullText = firstCell.innerText.trim();
 
-                // 公開日の抽出 (YYYY年MM月DD日 または YYYY-MM-DD または YYYY/MM/DD)
+                // 公開日の抽出
                 const dateMatch = fullText.match(/(\d{4}年\d{1,2}月\d{1,2}日|\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
                 const publishDate = dateMatch ? dateMatch[1] : '';
 
@@ -187,11 +235,9 @@
 
                 rowValues = [title, url, status, publishDate];
             } else {
-                // フォールバック: linkがない場合はそのままテキスト
                 rowValues = [firstCell.innerText.trim().replace(/\n/g, ' ')];
             }
 
-            // 残りの列（インプレッション, ページビュー, スキ, コメント, 売上等）
             for (let i = 1; i < cells.length; i++) {
                 rowValues.push(cells[i].innerText.trim().replace(/\n/g, ' '));
             }
@@ -199,7 +245,7 @@
             csvRows.push(rowValues);
         });
 
-        // CSV文字列の生成（ダブルクォートエスケープ）
+        // CSV文字列の生成
         const csvContent = csvRows.map(row => {
             return row.map(val => {
                 const str = (val === null || val === undefined) ? '' : String(val);
@@ -226,22 +272,30 @@
         linkElem.click();
         document.body.removeChild(linkElem);
         URL.revokeObjectURL(downloadUrl);
+        console.log(`[note Stats CSV] CSVダウンロードが完了しました (${csvRows.length - 1}件)`);
     }
 
-    // Observer to detect table appearing (only on the stats page)
+    // 1. MutationObserver による動的変更検知
     const observer = new MutationObserver(() => {
-        if (window.location.href.includes('/sitesettings/stats')) {
-            injectButton();
-        }
+        injectButton();
     });
 
-    observer.observe(document.body, {
+    observer.observe(document.documentElement || document.body, {
         childList: true,
         subtree: true
     });
 
-    // Initial check
-    if (window.location.href.includes('/sitesettings/stats')) {
+    // 2. 即時実行
+    injectButton();
+
+    // 3. SPA遅延描画対策: 500msごとに数回確認
+    let pollCount = 0;
+    const pollInterval = setInterval(() => {
+        pollCount++;
         injectButton();
-    }
+        if (document.getElementById(BUTTON_ID) || pollCount >= 20) {
+            clearInterval(pollInterval);
+        }
+    }, 500);
+
 })();
